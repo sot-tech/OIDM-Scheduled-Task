@@ -1,0 +1,17 @@
+<scheduledTasks xmlns="http://xmlns.oracle.com/oim/scheduler">
+    <task>
+        <name>Universal Recon</name>
+        <class>tk.sot_tech.oidm.sch.Recon</class>
+        <description>Universal Recon scheduled task</description>
+        <retry>5</retry>
+        <parameters>
+			<string-param required="true" encrypted="false" helpText="DataSource class">DataSource class</string-param>
+			<string-param required="false" encrypted="false" helpText="Preprocessor class">Preprocessor class</string-param>
+			<string-param required="false" encrypted="false" helpText="IT Resource">IT Resource</string-param>
+			<string-param required="false" encrypted="false" helpText="Resource Object">Resource Object</string-param>
+			<string-param required="true" encrypted="false" helpText="Property File, required for datasource">Properties File</string-param>
+			<string-param required="false" encrypted="false" helpText="Additional parameters, required for preprocessor">Additional parameters</string-param>
+			<string-param required="false" encrypted="false" helpText="Timestamp">Timestamp</string-param>
+        </parameters>
+    </task>
+</scheduledTasks>
