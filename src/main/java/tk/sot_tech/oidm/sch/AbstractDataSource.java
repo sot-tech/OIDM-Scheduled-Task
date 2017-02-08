@@ -33,7 +33,6 @@ import java.util.logging.Logger;
 import oracle.iam.platform.entitymgr.provider.ldap.CaseInsensitiveKeysMap;
 import tk.sot_tech.oidm.utility.ITResourceUtility;
 import tk.sot_tech.oidm.utility.Misc;
-import static tk.sot_tech.oidm.utility.Misc.isNullOrEmpty;
 
 public abstract class AbstractDataSource implements AutoCloseable {
 	
@@ -61,7 +60,7 @@ public abstract class AbstractDataSource implements AutoCloseable {
 		if (params != null) {
 			String inclIt = params.get(INCLUDE_IT_PARAMETER);
 
-			if (includeItResource = (!isNullOrEmpty(inclIt) && "true".equalsIgnoreCase(inclIt))) {
+			if (includeItResource = (Misc.toBoolean(inclIt))) {
 				try(ITResourceUtility itUtil = new ITResourceUtility()){
 					itKey = itUtil.getITResourceKey(reconParameters.getItResourceName());
 				}

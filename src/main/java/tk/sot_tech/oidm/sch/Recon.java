@@ -52,7 +52,7 @@ public class Recon extends AbstractScheduledTask {
 
 	private static final ResourceBundle BUNDLE = ResourceBundle.getBundle("resources/recon");
 
-	private static final String PARAM_PREPROCESSOR = BUNDLE.getString("scheduler.preprocessor"),
+	public static final String PARAM_PREPROCESSOR = BUNDLE.getString("scheduler.preprocessor"),
 		PARAM_IT_RESOURCE_NAME = BUNDLE.getString("scheduler.itresource"),
 		PARAM_RESOURCE_OBJECT = BUNDLE.getString("scheduler.object"),
 		PARAM_ADDITIONAL = BUNDLE.getString("scheduler.additional"),
@@ -65,7 +65,7 @@ public class Recon extends AbstractScheduledTask {
 		BATCH_SIZE_KEY = "batch",
 		LIMIT_SIZE_KEY = "limit",
 		IGNORE_EVENT_STATUS = "Creation Succeeded";
-	
+
 	private final SimpleDateFormat ORACLE_SQL_TIMESTAMP_FORMAT = new SimpleDateFormat(DATE_FORMAT);
 
 	private AbstractProcessor preProcessor = null;
@@ -88,11 +88,13 @@ public class Recon extends AbstractScheduledTask {
 			}).fetchData();
 		}
 		String tmp = parameters.getParameters().get(DONT_PROCESS_KEY);
-		if ((isNullOrEmpty(tmp) || !"true".equalsIgnoreCase(tmp)) && !isNullOrEmpty(values)) {
+		if (!Misc.toBoolean(tmp) && 
+				!isNullOrEmpty(values)) {
 			process(values);
 		}
 		tmp = parameters.getParameters().get(DONT_CLEAR_KEY);
-		if ((isNullOrEmpty(tmp) || !"true".equalsIgnoreCase(tmp)) && !isNullOrEmpty(values)) {
+		if (!Misc.toBoolean(tmp) && 
+				!isNullOrEmpty(values)) {
 			try (AbstractDataSource dataSource = ((AbstractDataSource) Class.forName(tmp).
 												  newInstance()).init(parameters)) {
 													  dataSource.setStopDelegate(
@@ -168,7 +170,8 @@ public class Recon extends AbstractScheduledTask {
 		ReconOperationsService reconSvc = Platform.getService(ReconOperationsService.class);
 		EventMgmtService reconMng = Platform.getService(EventMgmtService.class);
 		if (LIMIT_SIZE > 0 && total >= LIMIT_SIZE) {
-			throw new IllegalArgumentException("Unable to process record count more than limit: " + total);
+			throw new IllegalArgumentException(
+				"Unable to process record count more than limit: " + total);
 		} else {
 			for (HashMap<String, Object> record : values) {
 				boolean preprocessed = true;

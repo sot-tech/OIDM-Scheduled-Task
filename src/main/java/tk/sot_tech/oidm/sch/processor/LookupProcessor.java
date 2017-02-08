@@ -35,8 +35,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import tk.sot_tech.oidm.sch.AbstractProcessor;
+import static tk.sot_tech.oidm.sch.Recon.DONT_CLEAR_KEY;
 import tk.sot_tech.oidm.utility.ITResourceUtility;
 import tk.sot_tech.oidm.utility.LookupUtility;
+import tk.sot_tech.oidm.utility.Misc;
 import static tk.sot_tech.oidm.utility.Misc.isNullOrEmpty;
 import static tk.sot_tech.oidm.utility.Misc.ownStack;
 import static tk.sot_tech.oidm.utility.Misc.trimStrings;
@@ -49,7 +51,7 @@ public class LookupProcessor extends AbstractProcessor {
 	private String lookupName = null;
 	private HashMap<String, String> cache = null;
 	private long itKey = 0;
-	private boolean includeIt = false;
+	private boolean includeIt = false, clear = true;
 
 	private String nullToNULL(String s) {
 		if (s == null) {
@@ -63,12 +65,8 @@ public class LookupProcessor extends AbstractProcessor {
 	@Override
 	public boolean preprocess(HashMap<String, Object> in) {
 		try (LookupUtility lookupUtil = new LookupUtility()) {
-			final int maxDeleteTries = 5;
-			if (isNullOrEmpty(lookupName)) {
-				lookupName = parameters.getParameters().get(LOOKUP_KEY);
-				if (isNullOrEmpty(lookupName)) {
-					throw new NullPointerException(LOOKUP_KEY + " is null!");
-				}
+			if (clear) {
+				final int maxDeleteTries = 5;
 				int i = 0;
 				try {
 					do {
@@ -83,6 +81,7 @@ public class LookupProcessor extends AbstractProcessor {
 					Logger.getLogger(LookupProcessor.class.getName()).severe(ownStack(ex));
 				}
 			}
+			
 			trimStrings(in);
 
 			try {
@@ -120,14 +119,18 @@ public class LookupProcessor extends AbstractProcessor {
 	@Override
 	protected void initImpl() {
 		String inclIt = parameters.getParameters().get(INCLUDE_IT_KEY);
-		includeIt = !isNullOrEmpty(inclIt) && (inclIt.equals("1") || inclIt.equalsIgnoreCase("true")
-											   || inclIt.equalsIgnoreCase("yes"));
+		clear = !Misc.toBoolean(parameters.getParameters().get(DONT_CLEAR_KEY));
+		includeIt = Misc.toBoolean(inclIt);
 		if (includeIt) {
 			try (ITResourceUtility itResUtil = new ITResourceUtility()) {
 				itKey = itResUtil.getITResourceKey(parameters.getItResourceName());
 			} catch (tcAPIException | tcColumnNotFoundException ex) {
 				throw new IllegalStateException(ex);
 			}
+		}
+		lookupName = parameters.getParameters().get(LOOKUP_KEY);
+		if (isNullOrEmpty(lookupName)) {
+			throw new NullPointerException(LOOKUP_KEY + " is null!");
 		}
 	}
 
