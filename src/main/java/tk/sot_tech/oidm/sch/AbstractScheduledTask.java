@@ -32,36 +32,37 @@ import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import oracle.iam.scheduler.vo.TaskSupport;
+import tk.sot_tech.oidm.utility.Misc;
 import tk.sot_tech.oidm.utility.Platform;
 
 public abstract class AbstractScheduledTask extends TaskSupport {
-	
+
 	protected void isTerminated() throws SheduledTaskTerminatedException {
 		if (isStop()) {
 			throw new SheduledTaskTerminatedException();
 		}
 	}
-	
+
 	@Override
-	public void execute(HashMap params) throws Exception{
-		try{
+	public void execute(HashMap params) throws Exception {
+		try {
 			engage(params);
-		}
-		catch(SheduledTaskTerminatedException ignore){
+		} catch (SheduledTaskTerminatedException ignore) {
 			Logger.getLogger(AbstractScheduledTask.class.getName()).log(Level.WARNING, "Task {0} has stopped", getName());
 		}
 	}
-	
+
 	protected abstract void engage(HashMap params) throws SheduledTaskTerminatedException, Exception;
-	
+
 	@Override
 	public HashMap getAttributes() {
 		return null;
 	}
 
 	@Override
-	public void setAttributes() {}
-	
+	public void setAttributes() {
+	}
+
 	public static void updateReconField(String fieldName, String value, String taskName) throws tcAPIException, Exception {
 		String itsName = taskName;
 		long schedKey, fieldKey;
@@ -69,22 +70,26 @@ public abstract class AbstractScheduledTask extends TaskSupport {
 		HashMap<String, String> tmp = new HashMap<>();
 		tmp.put("Task Scheduler.Name", itsName);
 		tcResultSet found = scheduleIntf.findScheduleTasks(tmp);
-		found.goToRow(0);
-		schedKey = found.getLongValue("Task Scheduler.Key");
-		tmp.clear();
-		tmp.put("Task Scheduler.Key", String.valueOf(schedKey));
-                tmp.put("Task Scheduler.Task Attributes.Name", fieldName);
-		found = scheduleIntf.findScheduleTaskAttributes(tmp);
-		found.goToRow(0);
-		fieldKey = found.getLongValue("Task Scheduler.Task Attributes.Key");
-		tmp.put("Task Scheduler.Task Attributes.Value", value);
-
-		scheduleIntf.updateScheduleTaskAttribute(schedKey, fieldKey, tmp);
-
+		if (!Misc.isNullOrEmpty(found)) {
+			found.goToRow(0);
+			schedKey = found.getLongValue("Task Scheduler.Key");
+			tmp.clear();
+			tmp.put("Task Scheduler.Key", String.valueOf(schedKey));
+			tmp.put("Task Scheduler.Task Attributes.Name", fieldName);
+			found = scheduleIntf.findScheduleTaskAttributes(tmp);
+			if (!Misc.isNullOrEmpty(found)) {
+				found.goToRow(0);
+				fieldKey = found.getLongValue("Task Scheduler.Task Attributes.Key");
+				tmp.put("Task Scheduler.Task Attributes.Value", value);
+				scheduleIntf.updateScheduleTaskAttribute(schedKey, fieldKey, tmp);
+				return;
+			}
+		}
+		Logger.getLogger(AbstractScheduledTask.class.getName()).log(Level.WARNING, "Unable to set value [{0}] to field [{1}] in task \"{2}\"", new Object[]{value, fieldName, taskName});
 	}
-	
-	protected void updateReconField(String fieldName, String value) throws Exception{
+
+	protected void updateReconField(String fieldName, String value) throws Exception {
 		updateReconField(fieldName, value, getName());
 	}
-	
+
 }
