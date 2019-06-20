@@ -31,11 +31,15 @@ import Thor.API.tcResultSet;
 import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import oracle.iam.scheduler.api.SchedulerService;
+import oracle.iam.scheduler.vo.JobDetails;
+import oracle.iam.scheduler.vo.JobParameter;
 import oracle.iam.scheduler.vo.TaskSupport;
 import tk.sot_tech.oidm.utility.Misc;
-import tk.sot_tech.oidm.utility.Platform;
 
 public abstract class AbstractScheduledTask extends TaskSupport {
+	
+	private static final Logger LOG = Logger.getLogger(AbstractScheduledTask.class.getName());
 
 	protected void isTerminated() throws SheduledTaskTerminatedException {
 		if (isStop()) {
@@ -64,28 +68,65 @@ public abstract class AbstractScheduledTask extends TaskSupport {
 	}
 
 	public static void updateReconField(String fieldName, String value, String taskName) throws tcAPIException, Exception {
-		String itsName = taskName;
-		long schedKey, fieldKey;
-		tcSchedulerOperationsIntf scheduleIntf = Platform.getService(tcSchedulerOperationsIntf.class);
-		HashMap<String, String> tmp = new HashMap<>();
-		tmp.put("Task Scheduler.Name", itsName);
-		tcResultSet found = scheduleIntf.findScheduleTasks(tmp);
-		if (!Misc.isNullOrEmpty(found)) {
-			found.goToRow(0);
-			schedKey = found.getLongValue("Task Scheduler.Key");
-			tmp.clear();
-			tmp.put("Task Scheduler.Key", String.valueOf(schedKey));
-			tmp.put("Task Scheduler.Task Attributes.Name", fieldName);
-			found = scheduleIntf.findScheduleTaskAttributes(tmp);
+		boolean success = false;
+		tcSchedulerOperationsIntf scheduleIntf = null;
+		LOG.warning("Try to set with old API");
+		try {
+			scheduleIntf = tk.sot_tech.oidm.utility.Platform.getService(tcSchedulerOperationsIntf.class);
+			HashMap<String, String> tmp = new HashMap<>();
+			tmp.put("Task Scheduler.Name", taskName);
+			tcResultSet found = scheduleIntf.findScheduleTasks(tmp);
 			if (!Misc.isNullOrEmpty(found)) {
 				found.goToRow(0);
-				fieldKey = found.getLongValue("Task Scheduler.Task Attributes.Key");
-				tmp.put("Task Scheduler.Task Attributes.Value", value);
-				scheduleIntf.updateScheduleTaskAttribute(schedKey, fieldKey, tmp);
-				return;
+				long schedKey = found.getLongValue("Task Scheduler.Key");
+				if (schedKey > 0) {
+					tmp.clear();
+					tmp.put("Task Scheduler.Key", String.valueOf(schedKey));
+					tmp.put("Task Scheduler.Task Attributes.Name", fieldName);
+					found = scheduleIntf.findScheduleTaskAttributes(tmp);
+					if (!Misc.isNullOrEmpty(found)) {
+						found.goToRow(0);
+						long fieldKey = found.getLongValue("Task Scheduler.Task Attributes.Key");
+						if (fieldKey > 0) {
+							tmp.put("Task Scheduler.Task Attributes.Value", value);
+							scheduleIntf.updateScheduleTaskAttribute(schedKey, fieldKey, tmp);
+							success = true;
+						}
+					}
+				}
+			}
+		} catch (Exception ex) {
+			LOG.log(Level.WARNING, "Unable to update attrubute with old API, {0} Trying with new API", ex.toString());
+		} finally {
+			if (scheduleIntf != null) {
+				scheduleIntf.close();
 			}
 		}
-		Logger.getLogger(AbstractScheduledTask.class.getName()).log(Level.WARNING, "Unable to set value [{0}] to field [{1}] in task \"{2}\"", new Object[]{value, fieldName, taskName});
+		if (!success) {
+			SchedulerService newService = tk.sot_tech.oidm.utility.Platform.getService(SchedulerService.class);
+			JobDetails jobDetail = newService.getJobDetail(taskName);
+			if (jobDetail != null) {
+				HashMap<String, JobParameter> params = jobDetail.getParams();
+				if (!Misc.isNullOrEmpty(params)) {
+					JobParameter param = params.get(fieldName);
+					if (param == null) {
+						param = new JobParameter();
+						param.setName(fieldName);
+						param.setDataType("string");
+						param.setValue(value);
+						params.put(fieldName, param);
+					} else {
+						param.setValue(value);
+					}
+					newService.updateJob(jobDetail);
+					success = true;
+				}
+			}
+		}
+		if (!success) {
+			LOG.log(Level.WARNING, "Unable to set value [{0}] to field [{1}] in task \"{2}\"",
+																		new Object[]{value, fieldName, taskName});
+		}
 	}
 
 	protected void updateReconField(String fieldName, String value) throws Exception {
