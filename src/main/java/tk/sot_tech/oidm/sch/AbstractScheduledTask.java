@@ -70,7 +70,6 @@ public abstract class AbstractScheduledTask extends TaskSupport {
 	public static void updateReconField(String fieldName, String value, String taskName) throws tcAPIException, Exception {
 		boolean success = false;
 		tcSchedulerOperationsIntf scheduleIntf = null;
-		LOG.warning("Try to set with old API");
 		try {
 			scheduleIntf = tk.sot_tech.oidm.utility.Platform.getService(tcSchedulerOperationsIntf.class);
 			HashMap<String, String> tmp = new HashMap<>();
