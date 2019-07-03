@@ -50,6 +50,7 @@ public abstract class AbstractScheduledTask extends TaskSupport {
 	@Override
 	public void execute(HashMap params) throws Exception {
 		try {
+			LOG.log(Level.FINE, "Execute task {0} with params {1}", new Object[]{getName(), params});
 			engage(params);
 		} catch (SheduledTaskTerminatedException ignore) {
 			Logger.getLogger(AbstractScheduledTask.class.getName()).log(Level.WARNING, "Task {0} has stopped", getName());

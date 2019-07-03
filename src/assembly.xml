@@ -11,8 +11,8 @@
 		<dependencySet>
 			<outputDirectory>/lib</outputDirectory>
 			<includes>
+				<include>${project.groupId}:${project.artifactId}</include>
 				<include>tk.sot_tech.oidm:Easy-Utility</include>
-				<include>tk.sot_tech.oidm:Easy-Sched-Task</include>
 			</includes>
 		</dependencySet>
 	</dependencySets>
@@ -23,7 +23,7 @@
 		</fileSet>
 		<fileSet>
 			<directory>src/main/java/resources</directory>
-			<outputDirectory>/resources</outputDirectory>
+			<outputDirectory>/resources/resources</outputDirectory>
 		</fileSet>
 	</fileSets>
 	<files>

@@ -9,7 +9,7 @@
 			<string-param required="false" encrypted="false" helpText="Preprocessor class">Preprocessor class</string-param>
 			<string-param required="false" encrypted="false" helpText="IT Resource">IT Resource</string-param>
 			<string-param required="false" encrypted="false" helpText="Resource Object">Resource Object</string-param>
-			<string-param required="true" encrypted="false" helpText="Property File, required for datasource">Properties File</string-param>
+			<string-param required="false" encrypted="false" helpText="Property File, required for datasource">Properties File</string-param>
 			<string-param required="false" encrypted="false" helpText="Additional parameters, required for preprocessor">Additional parameters</string-param>
 			<string-param required="false" encrypted="false" helpText="Timestamp">Timestamp</string-param>
         </parameters>

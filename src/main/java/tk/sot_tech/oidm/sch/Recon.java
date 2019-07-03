@@ -30,7 +30,6 @@ import Thor.API.Exceptions.tcColumnNotFoundException;
 import Thor.API.Exceptions.tcITResourceNotFoundException;
 import java.io.Serializable;
 import java.net.MalformedURLException;
-import java.sql.SQLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -51,6 +50,8 @@ import tk.sot_tech.oidm.utility.Platform;
 public class Recon extends AbstractScheduledTask {
 
 	private static final ResourceBundle BUNDLE = ResourceBundle.getBundle("resources/recon");
+	
+	private static final Logger LOG = Logger.getLogger(Recon.class.getName());
 
 	public static final String PARAM_PREPROCESSOR = BUNDLE.getString("scheduler.preprocessor"),
 		PARAM_IT_RESOURCE_NAME = BUNDLE.getString("scheduler.itresource"),
@@ -123,7 +124,6 @@ public class Recon extends AbstractScheduledTask {
 														   IllegalAccessException,
 														   tcAPIException,
 														   ParseException,
-														   SQLException,
 														   tcColumnNotFoundException,
 														   tcITResourceNotFoundException,
 														   SheduledTaskTerminatedException,
@@ -138,18 +138,11 @@ public class Recon extends AbstractScheduledTask {
 		if (!isNullOrEmpty(tmp)) {
 			fromDate = ORACLE_SQL_TIMESTAMP_FORMAT.parse(tmp.trim());
 		}
-		tmp = (String) params.get(PARAM_PROPERTY_FILE);
-		if (isNullOrEmpty(tmp)) {
-			throw new IllegalArgumentException(PARAM_PROPERTY_FILE + " is empty");
-		}
 		resourceObject = (String) params.get(PARAM_RESOURCE_OBJECT);
-		if (isNullOrEmpty(resourceObject)) {
-			throw new IllegalArgumentException(PARAM_RESOURCE_OBJECT + " is empty");
-		}
 		parameters = new ReconParameters();
-		parameters.init(((String) params.get(PARAM_IT_RESOURCE_NAME)).trim(), tmp, (String) params.
+		parameters.init(((String) params.get(PARAM_IT_RESOURCE_NAME)).trim(), (String) params.get(PARAM_PROPERTY_FILE), (String) params.
 						get(PARAM_ADDITIONAL), fromDate);
-		Logger.getLogger(Recon.class.getName()).log(Level.WARNING, "{0}", parameters.toString());
+		LOG.log(Level.FINE, "Recon parameters {0}", parameters.toString());
 		tmp = ((String) params.get(PARAM_DATASOURCE)).trim();
 		if (isNullOrEmpty(tmp)) {
 			throw new IllegalArgumentException(PARAM_DATASOURCE + " is empty");
@@ -166,7 +159,7 @@ public class Recon extends AbstractScheduledTask {
 		ArrayList<HashMap<String, Object>> reconData = new ArrayList<>();
 		ArrayList<HashMap<String, Object>> toRemove = new ArrayList<>();
 		int total = values.size(), current = 0;
-		Logger.getLogger(Recon.class.getName()).log(Level.INFO, "Preprocessing...");
+		LOG.log(Level.FINE, "Preprocessing...");
 		ReconOperationsService reconSvc = Platform.getService(ReconOperationsService.class);
 		EventMgmtService reconMng = Platform.getService(EventMgmtService.class);
 		if (LIMIT_SIZE > 0 && total >= LIMIT_SIZE) {
@@ -177,25 +170,26 @@ public class Recon extends AbstractScheduledTask {
 				boolean preprocessed = true;
 				isTerminated();
 				if (preProcessor != null) {
+					LOG.log(Level.FINEST, "Processing record {0}", record);
 					preprocessed = preProcessor.preprocess(record);
 				}
 				if (preprocessed) {
 					reconData.add(record);
 				}
 				if (reconData.size() == PARTIAL_BATCH_SIZE) {
-					Logger.getLogger(Recon.class.getName()).log(Level.INFO,
+					LOG.log(Level.INFO,
 																"Partial Reconcilating...");
 					processPartial(reconData, reconSvc, reconMng);
 					toRemove.addAll(reconData);
 					reconData.clear();
 				}
 				if (current > 0 && (current * 100 / total) % 20 == 0) {
-					Logger.getLogger(Recon.class.getName()).log(Level.INFO,
+					LOG.log(Level.INFO,
 																"{0} of {1} records preprocessed",
 																new Object[]{current, total});
 				}
 			}
-			Logger.getLogger(Recon.class.getName()).log(Level.INFO, "Finish Reconcilating...");
+			LOG.log(Level.INFO, "Finish Reconcilating...");
 			processPartial(reconData, reconSvc, reconMng);
 			toRemove.addAll(reconData);
 			values.clear();
@@ -206,6 +200,9 @@ public class Recon extends AbstractScheduledTask {
 	private void processPartial(ArrayList<HashMap<String, Object>> reconData,
 								ReconOperationsService reconSvc, EventMgmtService reconMng) throws
 		SheduledTaskTerminatedException {
+		if(Misc.isNullOrEmpty(resourceObject)){
+			throw new IllegalArgumentException("Missing parameter " + PARAM_RESOURCE_OBJECT);
+		}
 		if (!isNullOrEmpty(reconData)) {
 			BatchAttributes ba = new BatchAttributes(resourceObject, DATE_FORMAT, true);
 			InputData[] input = new InputData[reconData.size()];
@@ -233,7 +230,7 @@ public class Recon extends AbstractScheduledTask {
 						reconSvc.processReconciliationEvent((Long) key);
 					}
 				} catch (tcAPIException ex) {
-					Logger.getLogger(Recon.class.getName()).severe(Misc.ownStack(ex));
+					LOG.severe(Misc.ownStack(ex));
 				}
 			}
 		}
